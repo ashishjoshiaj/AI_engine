@@ -162,10 +162,7 @@ def analyze_study(content: str, url: str, title: str, authors: str, source: str)
         
         for q in questions:
             try:
-                if len(q) < 6000:
-                    result = ask_llm_with_chunks(content, q, doc_type)
-                else:
-                    result = ask_llm(content, q, doc_type)
+                result = ask_llm(content, q, doc_type)
                 q_results.append({
                     "question": q,
                     "score": result["score"],
