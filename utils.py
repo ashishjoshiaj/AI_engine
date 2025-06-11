@@ -51,7 +51,7 @@ def extract_text_and_metadata_from_url(url: str):
 
     return text, title, authors_str, source
 
-def extract_text_and_metadata_from_pdf_url(url: str):
+def extract_text_and_metadata_from_pdf_url(url: str, max_pages: int = None):
     try:
         response = requests.get(url, timeout=20)
         response.raise_for_status()
@@ -63,10 +63,13 @@ def extract_text_and_metadata_from_pdf_url(url: str):
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     except Exception as e:
         raise ValueError(f"Failed to open PDF document: {e}")
+    total_pages = doc.page_count
+    pages_to_extract = total_pages if max_pages is None else min(max_pages, total_pages)
 
     # Extract text from all pages
     text = ""
-    for page in doc:
+    for page_no in range(pages_to_extract):
+        page = doc.load_page(page_no)
         text += page.get_text()
 
     if len(text) < 500:
@@ -76,6 +79,6 @@ def extract_text_and_metadata_from_pdf_url(url: str):
     metadata = doc.metadata
     title = metadata.get("title") or "Unknown Title"
     authors_str = metadata.get("author") or "Unknown Authors"
-    source = url.split('/')[2]  # domain as fallback
+    source = url.split('/')[2]
 
     return text, title, authors_str, source
