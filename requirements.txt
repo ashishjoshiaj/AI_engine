@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+requests
+beautifulsoup4
+PyMuPDF
+langchain-community
+openai
+pydantic
+langchain
