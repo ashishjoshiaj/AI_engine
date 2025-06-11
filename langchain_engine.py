@@ -245,9 +245,9 @@ def analyze_study(content: str, url: str, title: str, authors: str, source: str)
         "url": url,
         "document_type": doc_type,
         "analysis": {
-            "empirical_basis": analysis.get("empirical_basis", {"questions": [], "subscore": 5.0}),
-            "modeled_science": analysis.get("modeled_science", {"questions": [], "subscore": 5.0}),
-            "storyline_science": analysis.get("storyline_science", {"questions": [], "subscore": 5.0}),
+            "empirical_basis": analysis.get("empirical_basis", {"questions": [], "subscore": 4.0}),
+            "modeled_science": analysis.get("modeled_science", {"questions": [], "subscore": 4.0}),
+            "storyline_science": analysis.get("storyline_science", {"questions": [], "subscore": 4.0}),
             "final_es_score": final_es_score,
             "classification": classification,
             "summary": summary

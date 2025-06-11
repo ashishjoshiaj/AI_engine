@@ -23,8 +23,7 @@ class AnalyzePDFRequest(BaseModel):
 @app.post("/analyze/pdf")
 async def analyze_pdf(request: AnalyzePDFRequest):
     try:
-        content, title, authors, source = extract_text_and_metadata_from_pdf_url(str(request.url), max_pages=2)
-        limited_questions = {cat: qs[:1] for cat, qs in empirical_questions.items()}
+        content, title, authors, source = extract_text_and_metadata_from_pdf_url(str(request.url))
         result = analyze_study(
             content,
             str(request.url),
