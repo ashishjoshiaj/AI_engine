@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, HttpUrl
 from utils import extract_text_and_metadata_from_url, extract_text_and_metadata_from_pdf_url
-from lancgchain_engine import analyze_study
+from langchain_engine import analyze_study
 
 app = FastAPI()
 
