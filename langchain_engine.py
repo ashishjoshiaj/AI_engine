@@ -10,7 +10,7 @@ import re
 if "OPENAI_API_KEY" not in os.environ:
     raise EnvironmentError("Missing OPENAI_API_KEY in environment variables.")
 
-llm = ChatOpenAI(model_name="gpt-4o", temperature=0.3)
+llm = ChatOpenAI(model_name="gpt-4o", temperature=0.3,streaming=True)
 
 def chunk_text(text: str, chunk_size: int = 4000, chunk_overlap: int = 200) -> list:
     text_splitter = RecursiveCharacterTextSplitter(
