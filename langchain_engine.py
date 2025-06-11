@@ -13,23 +13,17 @@ if "OPENAI_API_KEY" not in os.environ:
 llm = ChatOpenAI(model_name="gpt-4o", temperature=0.3)
 
 def chunk_text(text: str, chunk_size: int = 4000, chunk_overlap: int = 200) -> list:
-    """Split large text into manageable chunks for LLM processing"""
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
         separators=["\n\n", "\n", ". ", " ", ""]
     )
-    chunks = text_splitter.split_text(text)
-    return chunks
+    return text_splitter.split_text(text)
 
 def ask_llm(content, question, document_type="study"):
-    """Enhanced LLM interaction with better prompting for different document types"""
-    
-    # Determine if content needs chunking
-    if len(content) > 6000:  # If content is too long, use chunking approach
+    if len(content) > 6000:
         return ask_llm_with_chunks(content, question, document_type)
     
-    # Adapt system prompt based on document type
     if "ipcc" in content.lower() or "intergovernmental panel" in content.lower():
         system_prompt = (
             "You are Unit 007, an AI model designed to evaluate the scientific rigor and validity of climate science studies. "
@@ -52,7 +46,6 @@ def ask_llm(content, question, document_type="study"):
             "For the following question, return a JSON object with a 'score' (real number 1-10) and a 'justification' (1-2 sentences)."
         )
 
-    # Truncate content if still too long for single request
     content_excerpt = content[:4000] if len(content) > 4000 else content
     
     user_prompt = f"""Study Content:
@@ -74,8 +67,6 @@ Return JSON:
     try:
         response = llm(messages)
         raw = response.content.strip()
-        
-        # Clean up response format
         if raw.startswith("```"):
             raw = raw.lstrip("`")
             lines = raw.splitlines()
@@ -89,7 +80,6 @@ Return JSON:
         return parsed
         
     except json.JSONDecodeError as e:
-        # Fallback: try to extract score and justification from malformed JSON
         try:
             score_match = re.search(r'"score":\s*([0-9.]+)', raw)
             justification_match = re.search(r'"justification":\s*"([^"]+)"', raw)
@@ -108,12 +98,10 @@ Return JSON:
         raise ValueError(f"Error processing LLM response: {e}\nResponse: {response.content}")
 
 def ask_llm_with_chunks(content, question, document_type="study"):
-    """Process large documents by analyzing chunks and aggregating results"""
     
     chunks = chunk_text(content)
     chunk_scores = []
     chunk_justifications = []
-    
     for i, chunk in enumerate(chunks[:5]):  # Limit to first 5 chunks for performance
         try:
             result = ask_llm(chunk, question, document_type)
@@ -140,7 +128,6 @@ def ask_llm_with_chunks(content, question, document_type="study"):
     }
 
 def determine_document_type(content: str, source: str, url: str) -> str:
-    """Determine document type for context-aware analysis"""
     content_lower = content.lower()
     source_lower = source.lower()
     url_lower = url.lower()
@@ -158,16 +145,11 @@ def determine_document_type(content: str, source: str, url: str) -> str:
         return "study"
 
 def analyze_study(content: str, url: str, title: str, authors: str, source: str) -> dict:
-    """Enhanced study analysis with document type awareness and robust processing"""
-    
-    # Determine document type for context-aware analysis
     doc_type = determine_document_type(content, source, url)
     
     analysis = {}
     all_scores = []
     processing_notes = []
-    
-    # Add document length info
     content_length = len(content)
     processing_notes.append(f"Document length: {content_length:,} characters")
     
@@ -180,7 +162,10 @@ def analyze_study(content: str, url: str, title: str, authors: str, source: str)
         
         for q in questions:
             try:
-                result = ask_llm(content, q, doc_type)
+                if len(q) < 6000:
+                    result = ask_llm_with_chunks(content, q, doc_type)
+                else:
+                    result = ask_llm(content, q, doc_type)
                 q_results.append({
                     "question": q,
                     "score": result["score"],
@@ -190,12 +175,11 @@ def analyze_study(content: str, url: str, title: str, authors: str, source: str)
                 all_scores.append(result["score"])
                 
             except Exception as e:
-                # Handle individual question failures gracefully
                 print(f"Warning: Failed to process question '{q}': {e}")
                 processing_notes.append(f"Failed to process 1 question in {category}")
                 continue
         
-        if cat_scores:  # Only create category if we have scores
+        if cat_scores:
             subscore = round(sum(cat_scores) / len(cat_scores), 2)
             analysis[category] = {
                 "questions": q_results,
@@ -254,12 +238,3 @@ def analyze_study(content: str, url: str, title: str, authors: str, source: str)
         },
         "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z"
     }
-
-"""
-,
-        "processing_info": {
-            "content_length": content_length,
-            "notes": processing_notes,
-            "questions_processed": len(all_scores)
-        }
-"""
