@@ -10,7 +10,7 @@ import re
 if "OPENAI_API_KEY" not in os.environ:
     raise EnvironmentError("Missing OPENAI_API_KEY in environment variables.")
 
-llm = ChatOpenAI(model_name="gpt-4o", temperature=0.3,streaming=True)
+llm = ChatOpenAI(model_name="gpt-4o", temperature=0.3)
 
 def chunk_text(text: str, chunk_size: int = 4000, chunk_overlap: int = 200) -> list:
     text_splitter = RecursiveCharacterTextSplitter(
@@ -21,9 +21,6 @@ def chunk_text(text: str, chunk_size: int = 4000, chunk_overlap: int = 200) -> l
     return text_splitter.split_text(text)
 
 def ask_llm(content, question, document_type="study"):
-    if len(content) > 6000:
-        return ask_llm_with_chunks(content, question, document_type)
-    
     if "ipcc" in content.lower() or "intergovernmental panel" in content.lower():
         system_prompt = (
             "You are Unit 007, an AI model designed to evaluate the scientific rigor and validity of climate science studies. "

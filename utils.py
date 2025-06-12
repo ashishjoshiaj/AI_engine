@@ -1,11 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 import io
-import fitz  # PyMuPDF
+import fitz
 
 def extract_text_and_metadata_from_url(url: str):
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=20)
         response.raise_for_status()
     except requests.RequestException as e:
         raise ValueError(f"Failed to fetch the URL: {e}")
