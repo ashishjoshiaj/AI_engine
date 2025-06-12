@@ -159,7 +159,12 @@ def analyze_study(content: str, url: str, title: str, authors: str, source: str)
         
         for q in questions:
             try:
+                result=None
                 result = ask_llm(content, q, doc_type)
+                if result is None:
+                    return {
+                        "error": "LLM returned None for question processing"
+                    }
                 q_results.append({
                     "question": q,
                     "score": result["score"],
