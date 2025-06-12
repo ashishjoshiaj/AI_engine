@@ -63,6 +63,7 @@ Return JSON:
 
     try:
         response = llm(messages)
+        print(f"LLM response: {response.content}")
         raw = response.content.strip()
         if raw.startswith("```"):
             raw = raw.lstrip("`")
