@@ -1,11 +1,9 @@
 fastapi
-uvicorn
-requests
-beautifulsoup4
-PyMuPDF
-langchain-community
-openai
 pydantic
+requests
 langchain
-arxiv
-python-multipart
+langchain_community
+openai
+PyMuPDF
+beautifulsoup4
+uvicorn
