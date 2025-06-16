@@ -7,3 +7,5 @@ langchain-community
 openai
 pydantic
 langchain
+arxiv
+python-multipart
