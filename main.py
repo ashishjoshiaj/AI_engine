@@ -9,8 +9,10 @@ from langchain.schema import SystemMessage, HumanMessage
 import fitz
 from bs4 import BeautifulSoup
 import json
-import arxiv
 import re
+
+# Use ArxivLoader from langchain_community
+from langchain_community.document_loaders import ArxivLoader
 
 # Request and response models
 class AnalyzeRequest(BaseModel):
@@ -90,52 +92,35 @@ BASE_SYSTEM_PROMPT = (
     "Return only valid JSON with a 'questions' array containing question, score, and justification."
 )
 
-
-
 def extract_text_and_metadata_from_url(url: str):
     # --- arXiv PDF or abstract page ---
     if "arxiv" in url:
         match = re.search(r'arxiv\.org/(?:abs|pdf)/([0-9]+\.[0-9]+)', url)
         arxiv_id = match.group(1) if match else None
 
-        # Download PDF and extract text
-        if 'pdf' in url.lower():
-            try:
-                response = requests.get(url, timeout=20)
-                response.raise_for_status()
-            except requests.RequestException as e:
-                raise ValueError(f"Failed to fetch the PDF URL: {e}")
-            pdf_bytes = response.content
-            with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
-                text = ""
-                for page in doc:
-                    text += page.get_text()
-            if len(text) < 500:
-                raise ValueError("The extracted PDF content seems too short to be a scientific study.")
-        else:
-            # For arXiv abstract page, fallback to HTML extraction
-            try:
-                response = requests.get(url, timeout=20)
-                response.raise_for_status()
-            except requests.RequestException as e:
-                raise ValueError(f"Failed to fetch the URL: {e}")
-            soup = BeautifulSoup(response.text, 'html.parser')
-            text = soup.get_text(strip=True)
-            if len(text) < 500:
-                raise ValueError("The extracted content seems too short to be a scientific study.")
-
-        # Fetch metadata using arxiv package
-        title = "Unknown Title"
-        authors = "Unknown Authors"
-        source = "arXiv"
         if arxiv_id:
-            search = arxiv.Search(id_list=[arxiv_id])
-            for result in search.results():
-                title = result.title
-                authors = ", ".join([author.name for author in result.authors])
-                break  # Only one result expected
-
-        return text, title, authors, source
+            # Use ArxivLoader for robust metadata and content extraction
+            try:
+                loader = ArxivLoader(query=arxiv_id)
+                docs = loader.load()
+            except Exception as e:
+                raise ValueError(f"Failed to load document from arXiv using ArxivLoader: {e}")
+            if docs:
+                doc = docs[0]
+                text = doc.page_content
+                meta = doc.metadata
+                title = meta.get("Title") or meta.get("title") or "Unknown Title"
+                authors = ", ".join(meta.get("Authors", [])) if meta.get("Authors") else meta.get("authors", "Unknown Authors")
+                if isinstance(authors, list):
+                    authors = ", ".join(authors)
+                source = "arXiv"
+                if len(text) < 500:
+                    raise ValueError("The extracted arXiv content seems too short to be a scientific study.")
+                return text, title, authors, source
+            else:
+                raise ValueError("Failed to load document from arXiv.")
+        else:
+            raise ValueError("Could not extract arXiv ID from URL.")
 
     # --- PDF extraction for non-arXiv PDFs ---
     if 'pdf' in url.lower():
@@ -312,91 +297,3 @@ async def analyze(request: AnalyzeRequest):
     )
     # Return the result with non-null fields only
     return result.model_dump(exclude_none=True)
-
-
-'''
-def extract_text_and_metadata_from_url(url: str):
-    if "pdf" in url.lower():
-        try:
-            response = requests.get(url, timeout=20)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            raise ValueError(f"Failed to fetch the PDF URL: {e}")
-        pdf_bytes = response.content
-        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
-            text = ""
-            for page in doc:
-                text += page.get_text()
-            # Extract metadata from PDF document info
-            metadata = doc.metadata
-        if len(text) < 500:
-            raise ValueError("The extracted PDF content seems too short to be a scientific study.")
-        title = metadata.get("title") if metadata.get("title") else "Unknown Title"
-        authors = metadata.get("author") if metadata.get("author") else "Unknown Authors"
-        source = url.split('/')[2]
-        return text, title, authors, source
-    try:
-        response = requests.get(url, timeout=20)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        raise ValueError(f"Failed to fetch the URL: {e}")
-    soup = BeautifulSoup(response.text, 'html.parser')
-    # Use get_text with separator to preserve spaces
-    text = soup.get_text(separator=' ', strip=True)
-    if len(text) < 500:
-        raise ValueError("The extracted content seems too short to be a scientific study.")
-
-    # Title
-    title = None
-    # Check multiple meta tag attributes for title
-    title_meta = (
-        soup.find("meta", attrs={"name": "title"}) or
-        soup.find("meta", attrs={"property": "og:title"}) or
-        soup.find("meta", attrs={"name": "twitter:title"})
-    )
-    if title_meta and title_meta.get("content"):
-        title = title_meta.get("content").strip()
-    elif soup.title and soup.title.string:
-        title = soup.title.string.strip()
-    else:
-        title = "Unknown Title"
-
-    # Authors
-    authors = []
-    # Check multiple meta tag names and properties for authors
-    author_meta_names = [
-        "citation_author",
-        "author",
-        "dc.creator",
-        "article:author",
-        "og:article:author"
-    ]
-    for name in author_meta_names:
-        for meta in soup.find_all("meta", attrs={"name": name}):
-            if meta.get("content"):
-                authors.append(meta["content"].strip())
-        for meta in soup.find_all("meta", attrs={"property": name}):
-            if meta.get("content"):
-                authors.append(meta["content"].strip())
-        if authors:
-            break
-    authors_str = ", ".join(authors) if authors else "Unknown Authors"
-
-    # Source (journal or publisher)
-    source = None
-    source_meta_names = [
-        "citation_journal_title",
-        "citation_publisher",
-        "og:site_name",
-        "publisher"
-    ]
-    for name in source_meta_names:
-        meta_tag = soup.find("meta", attrs={"name": name}) or soup.find("meta", attrs={"property": name})
-        if meta_tag and meta_tag.get("content"):
-            source = meta_tag.get("content").strip()
-            break
-    if not source:
-        source = url.split('/')[2]
-
-    return text, title, authors_str, source
-'''
