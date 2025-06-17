@@ -259,7 +259,7 @@ async def analyze(request: AnalyzeRequest):
         cat_res = await analyze_category(text, qs)
         scores = [q.score for q in cat_res.questions]
         final_es_score = round(sum(scores) / len(scores), 2) if scores else 0.0
-        summary = f"This study's relevance to {cat.replace('_', ' ')} is reflected in its Empirical Score of {final_es_score}."
+#        summary = f"This study's relevance to {cat.replace('_', ' ')} is reflected in its Empirical Score of {final_es_score}."
         analysis_data[cat] = CategoryResult(
             questions=cat_res.questions,
             final_es_score=final_es_score,
